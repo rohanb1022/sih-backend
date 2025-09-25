@@ -1,5 +1,8 @@
 import { WebSocketServer } from "ws";
 import Report from "../backend-api/models/report.model.js";
+import path from "path";
+import { fileURLToPath } from "url";
+
 
 // Ensure env is loaded from the root folder
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
