@@ -13,6 +13,8 @@ NEWSAPI_SEARCH_QUERY = '"tsunami alert" OR "cyclone warning" OR "coastal flood" 
 # --- GOOGLE ALERTS ---
 GOOGLE_ALERTS_RSS_URL = "https://www.google.com/alerts/feeds/05285563936828042999/4381527242689804364"
 
+NODE_API_INGEST_URL = "http://localhost:5000/api/reports/internal/ingest"
+
 # --- SHARED SETTINGS ---
 SLEEP_TIME_SECONDS = 300
 MAX_ALERTS_STORED = 100

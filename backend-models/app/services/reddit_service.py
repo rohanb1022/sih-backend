@@ -1,11 +1,24 @@
 import praw
 import time
+import requests # Make sure requests is imported
 from app import config
 
 posts_already_seen = set()
 
-def check_reddit(shared_alerts_queue):
+def send_alert_to_backend(alert_data: dict):
+    """Sends a single alert to the Node.js backend."""
+    try:
+        response = requests.post(config.NODE_API_INGEST_URL, json=alert_data)
+        if response.status_code == 201:
+            print(f"--- Reddit Alert successfully sent to backend: {alert_data['title'][:50]}... ---")
+        else:
+            print(f"--- FAILED to send Reddit alert. Status: {response.status_code}, Response: {response.text} ---")
+    except requests.exceptions.RequestException as e:
+        print(f"--- ERROR: Could not connect to Node.js backend. Is it running? Error: {e} ---")
+
+def check_reddit():
     print("Connecting to Reddit...")
+    # ... (the rest of your connection logic remains the same)
     try:
         reddit = praw.Reddit(
             client_id=config.REDDIT_CLIENT_ID,
@@ -29,9 +42,10 @@ def check_reddit(shared_alerts_queue):
                         post_title_lower = post.title.lower()
                         has_negative = any(keyword in post_title_lower for keyword in config.NEGATIVE_KEYWORDS)
                         if not has_negative:
+                            # --- THIS IS THE CHANGED SECTION ---
                             alert = {"source": "Reddit", "title": post.title, "url": post.url}
-                            shared_alerts_queue.appendleft(alert)
-                            print(f"--- Reddit Alert Stored: {post.title[:50]}... ---")
+                            send_alert_to_backend(alert)
+                            # -----------------------------------
                     posts_already_seen.add(post.id)
         except Exception as e:
             print(f"An error occurred in Reddit worker: {e}")

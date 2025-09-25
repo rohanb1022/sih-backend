@@ -80,3 +80,36 @@ export const getReportsNear = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+export const ingestAutomatedReport = async (req, res) => {
+  try {
+    const { title, url, source } = req.body;
+
+    // A simple function to guess the hazard type from the title
+    const getHazardTypeFromTitle = (titleText) => {
+      const lowerTitle = titleText.toLowerCase();
+      if (lowerTitle.includes("cyclone")) return "cyclone";
+      if (lowerTitle.includes("tsunami")) return "tsunami";
+      if (lowerTitle.includes("flood")) return "flood";
+      if (lowerTitle.includes("spill")) return "oil_spill";
+      if (lowerTitle.includes("earthquake")) return "earthquake";
+      if (lowerTitle.includes("wave")) return "high_waves";
+      return "other";
+    };
+
+    const report = await Report.create({
+      userId: process.env.SYSTEM_USER_ID, // Use the ID from your .env file
+      hazardType: getHazardTypeFromTitle(title),
+      description: `Automated alert from ${source}: ${title}. Link: ${url}`,
+      mediaUrl: null, // Automated reports don't have images initially
+      latitude: 20.5937, // Default coordinates (center of India)
+      longitude: 78.9629, // Can be updated later
+      source: source.toLowerCase(), // e.g., "reddit", "newsapi"
+    });
+
+    res.status(201).json({ success: true, message: "Automated report ingested successfully", data: report });
+  } catch (error) {
+    console.error("❌ Error ingesting automated report:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};

@@ -1,13 +1,10 @@
 from fastapi import FastAPI
-from app.routers import alerts
 from app.services import alerter_service
 
 app = FastAPI(
-    title="Ocean Hazard Monitoring Backend",
-    description="An API that monitors Reddit, NewsAPI, and Google Alerts for ocean-related hazards in India."
+    title="Ocean Hazard Alerter Worker",
+    description="A background worker that finds hazard alerts and sends them to the main API."
 )
-
-app.include_router(alerts.router)
 
 @app.on_event("startup")
 def on_startup():
@@ -15,4 +12,4 @@ def on_startup():
 
 @app.get("/")
 def read_root():
-    return {"status": "Server is running. Navigate to /docs for API documentation."}
+    return {"status": "Alerter worker is running."}
