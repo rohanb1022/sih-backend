@@ -1,6 +1,7 @@
 import { WebSocketServer } from "ws";
 import Report from "../backend-api/models/report.model.js";
-import path from "path";
+import SOS from "../backend-api/models/sos.model.js";  // ✅ Import SOS model
+import path, { resolve } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -32,7 +33,7 @@ export function attachWebSocketServer(server) {
 
   wss.on("connection", (ws) => {
     let userId;
-    let isAdmin = false; // flag for admin user
+    let isAdmin = false;
 
     console.log("✅ New client connected, waiting for userId...");
 
@@ -40,7 +41,7 @@ export function attachWebSocketServer(server) {
       try {
         const message = JSON.parse(data.toString());
 
-        // Step 1: Client sends userId first (and optional admin flag)
+        // Step 1: connect
         if (message.type === "connect" && message.payload?.userId) {
           userId = message.payload.userId;
           isAdmin = message.payload.isAdmin || false;
@@ -58,7 +59,7 @@ export function attachWebSocketServer(server) {
         const user = connectedUsers.get(userId);
         if (!user) return;
 
-        // Step 2: Update location
+        // Step 2: Location updates
         if (message.type === "update_location") {
           const { latitude, longitude } = message.payload;
           if (latitude == null || longitude == null) {
@@ -76,7 +77,7 @@ export function attachWebSocketServer(server) {
           ws.send(JSON.stringify({ type: "nearby_reports", payload: nearbyReports, timestamp: new Date() }));
         }
 
-        // Step 3: Start/stop realtime updates
+        // Step 3: Real-time updates
         if (message.type === "start_realtime_updates" && !user.dataIntervalId) {
           user.dataIntervalId = setInterval(async () => {
             if (!user.location) return;
@@ -96,7 +97,7 @@ export function attachWebSocketServer(server) {
           ws.send(JSON.stringify({ type: "data_streaming_stopped" }));
         }
 
-        // Step 4: SOS notification
+        // Step 4: SOS notification (now stored in DB)
         if (message.type === "sos_notification") {
           const { latitude, longitude, msg } = message.payload;
           if (!latitude || !longitude || !msg) {
@@ -104,31 +105,47 @@ export function attachWebSocketServer(server) {
             return;
           }
 
-          // Send to all admins
-          connectedUsers.forEach((usr, id) => {
+          // ✅ Save SOS to DB
+          const sosEntry = await SOS.create({
+            userId,
+            latitude,
+            longitude,
+            message: msg,
+            status: "pending",
+          });
+
+          // Notify all admins
+          connectedUsers.forEach((usr) => {
             if (usr.isAdmin) {
               usr.ws.send(JSON.stringify({
                 type: "sos_received",
                 payload: {
+                  sosId: sosEntry._id,
                   userId,
                   latitude,
                   longitude,
                   message: msg,
-                  timestamp: new Date(),
+                  status: sosEntry.status,
+                  timestamp: sosEntry.createdAt,
                 }
               }));
             }
           });
 
-          ws.send(JSON.stringify({ type: "sos_sent", message: "SOS notification sent to admin(s)." }));
+          ws.send(JSON.stringify({ type: "sos_sent", message: "SOS notification saved & sent to admin(s)." }));
         }
 
-        // Step 5: Admin response to SOS
+        // Step 5: Admin response (can update DB status)
         if (message.type === "sos_response") {
-          const { targetUserId, responseMsg } = message.payload;
+          const { targetUserId, responseMsg, sosId, status } = message.payload;
           if (!targetUserId || !responseMsg) {
             ws.send(JSON.stringify({ type: "error", message: "targetUserId and responseMsg required" }));
             return;
+          }
+
+          // ✅ Optionally update status in DB
+          if (sosId && status) {
+            await SOS.findByIdAndUpdate(sosId, { status, respondedBy: userId });
           }
 
           const targetUser = connectedUsers.get(targetUserId);
@@ -139,6 +156,7 @@ export function attachWebSocketServer(server) {
                 fromAdmin: userId,
                 message: responseMsg,
                 timestamp: new Date(),
+                updatedStatus: status || "resolved",
               }
             }));
           }
