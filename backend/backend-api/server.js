@@ -2,6 +2,7 @@ import express from "express";
 import authRoutes from "./routes/auth.routes.js";
 import connectDB from "./config/db.js";
 import reportRoutes from "./routes/report.route.js";
+import { getMapReports } from "./controller/map.controller.js";
 
 export function createExpressApp() {
 
@@ -19,6 +20,7 @@ export function createExpressApp() {
   // Routes
   app.use("/api/auth", authRoutes);
   app.use("/api/reports", reportRoutes);
+  app.use("/api/map", getMapReports);
 
   return app;
 }
