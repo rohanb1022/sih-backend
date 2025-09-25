@@ -1,4 +1,4 @@
-import Report from "../models/Report.model.js";
+import Report from "../models/report.model.js";
 
 // Get all reports for map display
 export const getMapReports = async (req, res) => {
