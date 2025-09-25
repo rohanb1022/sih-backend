@@ -1,4 +1,4 @@
-import Report from "../models/Report.model.js";
+import Report from "../models/report.model.js";
 import cloudinary from "../config/cloudinary.js";
 import fs from "fs";
 
