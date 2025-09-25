@@ -1,4 +1,4 @@
-import Report from "../models/Report.model.js";
+import Report from "../models/report.model.js";
 import cloudinary from "../config/cloudinary.js";
 import fs from "fs";
 
@@ -21,7 +21,7 @@ export const createReport = async (req, res) => {
       userId: req.user.id,
       hazardType,
       description,
-      mediaUrl,
+      mediaUrl : "https://www.aljazeera.com/wp-content/uploads/2024/09/AP24254586188844-1726071602.jpg?resize=1800%2C1800",
       latitude,
       longitude,
     });
