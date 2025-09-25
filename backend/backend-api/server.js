@@ -4,6 +4,7 @@ import connectDB from "./config/db.js";
 import reportRoutes from "./routes/report.route.js";
 import userRoutes from "./routes/user.routes.js";
 
+import { getMapReports } from "./controller/map.controller.js";
 
 export function createExpressApp() {
   
@@ -24,6 +25,7 @@ export function createExpressApp() {
   app.use("/api/users", userRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api/reports", reportRoutes);
+  app.use("/api/map", getMapReports);
 
   return app;
 }

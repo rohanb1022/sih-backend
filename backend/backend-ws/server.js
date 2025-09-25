@@ -1,8 +1,5 @@
 import { WebSocketServer } from "ws";
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
+import Report from "../backend-api/models/report.model.js";
 
 // Ensure env is loaded from the root folder
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -18,123 +15,102 @@ if (!JWT_SECRET) {
 // A Map to store connected users, with userId as the key.
 const connectedUsers = new Map();
 
-// Verifies the JWT token and returns the userId if valid.
-function verifyToken(token) {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    return decoded.userId;
-  } catch (error) {
-    console.error("Invalid token:", error.message);
-    return null;
-  }
+// Haversine formula
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Earth radius in meters
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
-// Attaches the WebSocket server to a given HTTP server.
 export function attachWebSocketServer(server) {
   const wss = new WebSocketServer({ server });
 
-  wss.on("connection", (ws, req) => {
-    // 1. Authenticate user on connection
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const token = url.searchParams.get("token");
+  wss.on("connection", (ws) => {
+    let userId;
+    console.log("✅ New client connected, waiting for userId...");
 
-    if (!token) {
-      ws.close(1008, "Token not provided");
-      return;
-    }
-
-    const userId = verifyToken(token);
-    if (!userId) {
-      ws.close(1008, "Invalid token");
-      return;
-    }
-
-    // Store the authenticated user
-    connectedUsers.set(userId, { ws, dataIntervalId: null });
-    console.log(`✅ User connected: ${userId}`);
-    ws.send(
-      JSON.stringify({
-        type: "connection_ack",
-        message: "Authenticated successfully",
-      })
-    );
-
-    // 2. Handle incoming messages
-    ws.on("message", (data) => {
+    ws.on("message", async (data) => {
       try {
         const message = JSON.parse(data.toString());
+
+        // Step 1: Client sends userId first
+        if (message.type === "connect" && message.payload?.userId) {
+          userId = message.payload.userId;
+          connectedUsers.set(userId, { ws, location: null, dataIntervalId: null });
+          ws.send(JSON.stringify({ type: "connection_ack", message: `User ${userId} connected.` }));
+          console.log(`User connected: ${userId}`);
+          return;
+        }
+
+        if (!userId) {
+          ws.send(JSON.stringify({ type: "error", message: "Send userId first." }));
+          return;
+        }
+
         const user = connectedUsers.get(userId);
         if (!user) return;
 
-        console.log(`[${userId}] sent: ${message.type}`);
+        // Step 2: Update location
+        if (message.type === "update_location") {
+          const { latitude, longitude } = message.payload;
+          if (latitude == null || longitude == null) {
+            ws.send(JSON.stringify({ type: "error", message: "Latitude & longitude required" }));
+            return;
+          }
 
-        switch (message.type) {
-          case "sos":
-            console.log(`🚨 SOS received from ${userId}:`, message.payload);
-            ws.send(
-              JSON.stringify({
-                type: "sos_ack",
-                status: "received",
-                timestamp: new Date().toISOString(),
-              })
-            );
-            break;
+          user.location = { latitude, longitude };
 
-          case "request_realtime_data":
-            if (user.dataIntervalId) return;
-            const intervalId = setInterval(() => {
-              const dummyData = {
-                type: "realtime_data_update",
-                payload: {
-                  heartRate: Math.floor(Math.random() * (120 - 60 + 1)) + 60,
-                  location: {
-                    lat: 19.2183 + (Math.random() - 0.5) * 0.01,
-                    lng: 72.9781 + (Math.random() - 0.5) * 0.01,
-                  },
-                  timestamp: new Date().toISOString(),
-                },
-              };
-              ws.send(JSON.stringify(dummyData));
-            }, 2000);
+          const reports = await Report.find({});
+          const nearbyReports = reports.filter((report) =>
+            calculateDistance(latitude, longitude, report.latitude, report.longitude) <= 3000
+          );
 
-            user.dataIntervalId = intervalId;
-            ws.send(JSON.stringify({ type: "data_streaming_started" }));
-            break;
-
-          case "stop_realtime_data":
-            if (user.dataIntervalId) {
-              clearInterval(user.dataIntervalId);
-              user.dataIntervalId = null;
-              ws.send(JSON.stringify({ type: "data_streaming_stopped" }));
-            }
-            break;
-
-          default:
-            ws.send(
-              JSON.stringify({ type: "error", message: "Unknown message type" })
-            );
+          ws.send(JSON.stringify({ type: "nearby_reports", payload: nearbyReports, timestamp: new Date() }));
         }
+
+        // Step 3: Start/stop realtime updates
+        if (message.type === "start_realtime_updates" && !user.dataIntervalId) {
+          user.dataIntervalId = setInterval(async () => {
+            if (!user.location) return;
+            const reports = await Report.find({});
+            const nearbyReports = reports.filter((report) =>
+              calculateDistance(user.location.latitude, user.location.longitude, report.latitude, report.longitude) <= 3000
+            );
+            ws.send(JSON.stringify({ type: "realtime_data_update", payload: nearbyReports, timestamp: new Date() }));
+          }, 5000);
+
+          ws.send(JSON.stringify({ type: "data_streaming_started" }));
+        }
+
+        if (message.type === "stop_realtime_updates" && user.dataIntervalId) {
+          clearInterval(user.dataIntervalId);
+          user.dataIntervalId = null;
+          ws.send(JSON.stringify({ type: "data_streaming_stopped" }));
+        }
+
       } catch (e) {
         console.error("Failed to process message:", e);
+        ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
       }
     });
 
-    // 3. Handle disconnection
     ws.on("close", () => {
-      const user = connectedUsers.get(userId);
-      if (user) {
-        if (user.dataIntervalId) {
-          clearInterval(user.dataIntervalId);
-        }
-        connectedUsers.delete(userId);
-        console.log(`❌ User disconnected: ${userId}`);
+      if (userId && connectedUsers.get(userId)?.dataIntervalId) {
+        clearInterval(connectedUsers.get(userId).dataIntervalId);
       }
+      connectedUsers.delete(userId);
+      console.log(`❌ User disconnected: ${userId}`);
     });
 
-    ws.on("error", (error) => {
-      console.error(`WebSocket error for user ${userId}:`, error);
-    });
+    ws.on("error", (err) => console.error("WS Error:", err));
   });
 
-  console.log("🚀 WebSocket Server is attached and running.");
+  console.log("🚀 WebSocket Server is running.");
 }
