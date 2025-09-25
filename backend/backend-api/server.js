@@ -1,14 +1,17 @@
 import express from "express";
-import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes.js";
+import connectDB from "./config/db.js";
 import reportRoutes from "./routes/report.route.js";
 
 export function createExpressApp() {
-  dotenv.config();
 
   const app = express();
   app.use(express.json());
 
+  // Connect to MongoDB 
+  connectDB();
+  
+  // Basic route
   app.get("/", (req, res) => {
     res.send("API is running...");
   });

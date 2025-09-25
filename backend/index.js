@@ -11,13 +11,7 @@ const PORT = process.env.PORT || 5000;
 
 async function startServer() {
   try {
-    if (MONGO_URI) {
-      await mongoose.connect(MONGO_URI);
-      console.log('✅ Connected to MongoDB');
-    } else {
-      console.log('ℹ️ MONGODB_URI not set, skipping Mongo connection');
-    }
-
+    
     const app = createExpressApp();
     const server = http.createServer(app);
 
