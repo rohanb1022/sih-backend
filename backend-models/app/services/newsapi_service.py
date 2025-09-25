@@ -3,11 +3,20 @@ import time
 from app import config
 
 articles_already_seen = set()
-
-# A list of our core hazard keywords to check against the title
 HAZARD_KEYWORDS = ['cyclone', 'tsunami', 'flood', 'spill', 'storm', 'earthquake', 'warning', 'alert']
 
-def check_newsapi(shared_alerts_queue):
+def send_alert_to_backend(alert_data: dict):
+    """Sends a single alert to the Node.js backend."""
+    try:
+        response = requests.post(config.NODE_API_INGEST_URL, json=alert_data)
+        if response.status_code == 201:
+            print(f"--- NewsAPI Alert successfully sent to backend: {alert_data['title'][:50]}... ---")
+        else:
+            print(f"--- FAILED to send NewsAPI alert. Status: {response.status_code}, Response: {response.text} ---")
+    except requests.exceptions.RequestException as e:
+        print(f"--- ERROR: Could not connect to Node.js backend. Is it running? Error: {e} ---")
+
+def check_newsapi():
     print("Connecting to NewsAPI...")
     while True:
         try:
@@ -19,19 +28,14 @@ def check_newsapi(shared_alerts_queue):
                 for article in data.get('articles', []):
                     if article['title'] not in articles_already_seen:
                         title_lower = article['title'].lower()
+                        has_hazard = any(keyword in title_lower for keyword in HAZARD_KEYWORDS)
+                        has_negative = any(keyword in title_lower for keyword in config.NEGATIVE_KEYWORDS)
                         
-                        # NEW FILTER 1: Check if a real hazard keyword is in the title
-                        has_hazard_keyword = any(keyword in title_lower for keyword in HAZARD_KEYWORDS)
-                        
-                        # NEW FILTER 2: Check for negative/political keywords in the title
-                        has_negative_keyword = any(keyword in title_lower for keyword in config.NEGATIVE_KEYWORDS)
-                        
-                        # Only store the alert if it's relevant and not political
-                        if has_hazard_keyword and not has_negative_keyword:
+                        if has_hazard and not has_negative:
+                            # --- THIS IS THE CHANGED SECTION ---
                             alert = {"source": "NewsAPI", "title": article['title'], "url": article['url']}
-                            shared_alerts_queue.appendleft(alert)
-                            print(f"--- NewsAPI Alert Stored: {article['title'][:50]}... ---")
-                            
+                            send_alert_to_backend(alert)
+                            # -----------------------------------
                         articles_already_seen.add(article['title'])
             else:
                 print(f"Error from NewsAPI: {data.get('message')}")
