@@ -1,17 +1,42 @@
 import User from "../models/user.model.js";
+import Report from "../models/report.model.js";
 
-// @desc Get user profile by ID
-// @route GET /api/auth/profile/:id
+// @desc Get user profile and reports by ID
+// @route GET /api/users/profile/:id
 export const getProfile = async (req, res) => {
   try {
-    const userId = req.params.id; // get userId from route
-    const user = await User.findById(userId).select("-password"); // exclude password
+    const userId = req.params.id;
+    const user = await User.findById(userId).select("-password");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json(user);
+    // Get total reports count
+    const totalReports = await Report.countDocuments({ user: userId });
+
+    // Get resolved reports count
+    const resolvedReports = await Report.countDocuments({ user: userId, status: "Resolved" });
+
+    // Get recent reports
+    const recentReports = await Report.find({ user: userId })
+      .sort({ createdAt: -1 })
+      .limit(10); // Adjust the limit as needed
+
+    // Combine all data into a single response object
+    const profileData = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      memberSince: user.createdAt,
+      pointsEarned: user.points,
+      achievements: user.achievements,
+      totalReports,
+      resolvedReports,
+      reports: recentReports,
+    };
+
+    res.json(profileData);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -19,11 +44,11 @@ export const getProfile = async (req, res) => {
 };
 
 // @desc Update user profile by ID
-// @route PUT /api/auth/profile/:id
+// @route PUT /api/users/profile/:id
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.params.id;
-    const updates = req.body; // name, email, etc.
+    const updates = req.body;
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
