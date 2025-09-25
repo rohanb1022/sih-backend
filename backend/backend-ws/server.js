@@ -6,10 +6,10 @@ import { fileURLToPath } from "url";
 
 // Ensure env is loaded from the root folder
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+//dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const JWT_SECRET = process.env.JWT_SECRET;
-
+ 
 if (!JWT_SECRET) {
   console.error("❌ FATAL ERROR: JWT_SECRET is not defined in .env file.");
   process.exit(1);
