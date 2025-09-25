@@ -62,6 +62,7 @@ const reportSchema = new mongoose.Schema(
     },
     mediaUrl: {
       type: String, // Cloudinary URL
+      default : null
     },
     latitude: {
       type: Number,
