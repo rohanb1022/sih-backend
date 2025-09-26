@@ -64,6 +64,11 @@ const reportSchema = new mongoose.Schema(
       type: String, // Cloudinary URL
       default: null,
     },
+    url: {
+      type: String,
+      unique: true,   // Ensures no two reports can have the same URL
+      sparse: true,   // Allows multiple documents to be missing this field (for user reports)
+    },
     latitude: {
       type: Number,
       required: true,
