@@ -5,7 +5,7 @@ import fs from "fs";
 // Create a new report
 export const createReport = async (req, res) => {
   try {
-    const { hazardType, description, latitude, longitude } = req.body;
+    const { hazardType, description, latitude, longitude,userId } = req.body;
     let mediaUrl = null;
 
     if (req.file) {
@@ -18,7 +18,7 @@ export const createReport = async (req, res) => {
     }
 
     const report = await Report.create({
-      userId: req.user.id,
+      userId: userId,
       hazardType,
       description,
       mediaUrl : "https://www.aljazeera.com/wp-content/uploads/2024/09/AP24254586188844-1726071602.jpg?resize=1800%2C1800",
@@ -81,11 +81,51 @@ export const getReportsNear = async (req, res) => {
   }
 };
 
+// ... (keep all your existing functions like createReport, getReports, etc.)
+
+// NEW FUNCTION: Update a report's status
+export const updateReportStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Validate the new status
+    if (!["verified", "rejected"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status provided." });
+    }
+
+    const report = await Report.findById(id);
+
+    if (!report) {
+      return res.status(404).json({ success: false, message: "Report not found." });
+    }
+
+    report.status = status;
+    await report.save();
+
+    res.json({ success: true, data: report });
+  } catch (error) {
+    console.error("❌ Error updating report status:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
 export const ingestAutomatedReport = async (req, res) => {
   try {
     const { title, url, source } = req.body;
 
-    // A simple function to guess the hazard type from the title
+    // --- NEW LOGIC: Check for duplicates before creating ---
+    const existingReport = await Report.findOne({ url: url });
+
+    if (existingReport) {
+      // If the report already exists, don't create a new one.
+      // Just send a success response to acknowledge the request.
+      return res.status(200).json({ success: true, message: "Report already exists." });
+    }
+    
+    // If we get here, the report is new and we should create it.
+
     const getHazardTypeFromTitle = (titleText) => {
       const lowerTitle = titleText.toLowerCase();
       if (lowerTitle.includes("cyclone")) return "cyclone";
@@ -98,17 +138,19 @@ export const ingestAutomatedReport = async (req, res) => {
     };
 
     const report = await Report.create({
-      userId: process.env.SYSTEM_USER_ID, // Use the ID from your .env file
+      userId: process.env.SYSTEM_USER_ID,
       hazardType: getHazardTypeFromTitle(title),
-      description: `Automated alert from ${source}: ${title}. Link: ${url}`,
-      mediaUrl: null, // Automated reports don't have images initially
-      latitude: 20.5937, // Default coordinates (center of India)
-      longitude: 78.9629, // Can be updated later
-      source: source.toLowerCase(), // e.g., "reddit", "newsapi"
+      description: `Automated alert from ${source}: ${title}.`, // Removed the link from description
+      url: url, // <-- Save the URL to the new dedicated field
+      mediaUrl: null,
+      latitude: 20.5937,
+      longitude: 78.9629,
+      source: source.toLowerCase(),
     });
 
     res.status(201).json({ success: true, message: "Automated report ingested successfully", data: report });
   } catch (error) {
+    // This will catch errors, including the "duplicate key" error if two requests try to create at the exact same time.
     console.error("❌ Error ingesting automated report:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }

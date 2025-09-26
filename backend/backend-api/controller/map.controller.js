@@ -72,3 +72,24 @@ export const getHotspots = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+// Acknowledge an SOS report
+export const acknowledgeSOS = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const report = await Report.findById(id);
+    if (!report) {
+      return res.status(404).json({ success: false, message: "Report not found" });
+    }
+    
+    report.status = 'verified';
+    report.isSOS = false;
+    await report.save();
+    
+    res.json({ success: true, data: report });
+  } catch (error) {
+    console.error("❌ Error acknowledging SOS:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
