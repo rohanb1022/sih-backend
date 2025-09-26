@@ -21,7 +21,7 @@ export const createReport = async (req, res) => {
       userId: userId,
       hazardType,
       description,
-      mediaUrl : "https://www.aljazeera.com/wp-content/uploads/2024/09/AP24254586188844-1726071602.jpg?resize=1800%2C1800",
+      mediaUrl : "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.aljazeera.com%2Fgallery%2F2025%2F5%2F27%2Fheavy-rains-lash-mumbai-amid-indias-earliest-monsoon-in-years&psig=AOvVaw0-rrPBhflie1mchohB7S9a&ust=1758962634780000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCNirxMyE9o8DFQAAAAAdAAAAABAE",
       latitude,
       longitude,
     });
