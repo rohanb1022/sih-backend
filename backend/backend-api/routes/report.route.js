@@ -8,7 +8,7 @@ const upload = multer({ dest: "uploads/" });
 
 router.post("/internal/ingest", ingestAutomatedReport);
 
-router.post("/report", protectRoute, upload.single("media"), createReport);
+router.post("/report", upload.single("media"), createReport);
 router.get("/getall", getReports);
 router.get("/near", getReportsNear);
 

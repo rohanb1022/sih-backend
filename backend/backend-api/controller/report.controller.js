@@ -5,7 +5,7 @@ import fs from "fs";
 // Create a new report
 export const createReport = async (req, res) => {
   try {
-    const { hazardType, description, latitude, longitude } = req.body;
+    const { hazardType, description, latitude, longitude,userId } = req.body;
     let mediaUrl = null;
 
     if (req.file) {
@@ -18,7 +18,7 @@ export const createReport = async (req, res) => {
     }
 
     const report = await Report.create({
-      userId: req.user.id,
+      userId: userId,
       hazardType,
       description,
       mediaUrl : "https://www.aljazeera.com/wp-content/uploads/2024/09/AP24254586188844-1726071602.jpg?resize=1800%2C1800",
