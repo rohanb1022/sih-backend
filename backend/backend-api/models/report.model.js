@@ -62,6 +62,7 @@ const reportSchema = new mongoose.Schema(
     },
     mediaUrl: {
       type: String, // Cloudinary URL
+      default: null,
     },
     latitude: {
       type: Number,
@@ -78,7 +79,7 @@ const reportSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ["user", "reddit", "newsapi", "google_alerts","google alerts"],
+      enum: ["user", "reddit", "newsapi", "google_alerts", "google alerts"],
       default: "user",
     },
   },

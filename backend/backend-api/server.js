@@ -1,5 +1,6 @@
 import express from "express";
 import authRoutes from "./routes/auth.routes.js";
+import adminRoutes from "./routes/admin.route.js";
 import connectDB from "./config/db.js";
 import reportRoutes from "./routes/report.route.js";
 import userRoutes from "./routes/user.routes.js";
@@ -25,6 +26,7 @@ export function createExpressApp() {
   app.use("/api/users", userRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api/reports", reportRoutes);
+  app.use("/api/admin", adminRoutes);
   app.use("/api/map", getMapReports);
 
   return app;

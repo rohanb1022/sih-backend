@@ -2,8 +2,12 @@ import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+
+
 // Generate JWT Token
 const generateToken = (id, role) => {
+const JWT=process.env.JWT_SECRET;
+console.log("JWT Secret:", JWT);
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
