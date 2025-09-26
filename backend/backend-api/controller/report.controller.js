@@ -81,6 +81,36 @@ export const getReportsNear = async (req, res) => {
   }
 };
 
+// ... (keep all your existing functions like createReport, getReports, etc.)
+
+// NEW FUNCTION: Update a report's status
+export const updateReportStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Validate the new status
+    if (!["verified", "rejected"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status provided." });
+    }
+
+    const report = await Report.findById(id);
+
+    if (!report) {
+      return res.status(404).json({ success: false, message: "Report not found." });
+    }
+
+    report.status = status;
+    await report.save();
+
+    res.json({ success: true, data: report });
+  } catch (error) {
+    console.error("❌ Error updating report status:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
 export const ingestAutomatedReport = async (req, res) => {
   try {
     const { title, url, source } = req.body;
