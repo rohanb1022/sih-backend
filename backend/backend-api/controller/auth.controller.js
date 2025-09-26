@@ -91,3 +91,32 @@ export const logout = async (req, res) => {
     res.status(500).json({ message: "Server error during logout" });
   }
 }
+
+export const checkAuth = async (req, res) => {
+    try {
+        // The `req.userId` and `req.userRole` are populated by the `protectRoute` middleware
+        const userId = req.userId;
+        const userRole = req.userRole;
+
+        if (!userId || !userRole) {
+            return res.status(401).json({ message: "Not authenticated" });
+        }
+
+        const user = await User.findById(userId).select("-password");
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Return a new token and user data to refresh the session
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            token: generateToken(user._id, user.role),
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Server error during authentication check" });
+    }
+};
