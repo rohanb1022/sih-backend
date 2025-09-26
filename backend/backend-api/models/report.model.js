@@ -54,7 +54,7 @@ const reportSchema = new mongoose.Schema(
     },
     hazardType: {
       type: String,
-      enum: ["flood", "tsunami", "oil_spill", "high_waves", "other"],
+      enum: ["flood", "Broken_Buildings", "oil_spill", "ocean_trash", "other"],
       required: true,
     },
     description: {
