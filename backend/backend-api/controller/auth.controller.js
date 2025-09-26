@@ -17,15 +17,16 @@ console.log("JWT Secret:", JWT);
 // @route POST /api/auth/signup
 export const signup = async (req, res) => {
   try {
+    console.log("Incoming signup body:", req.body);
     const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: "Please enter all fields" });
+      return res.status(400).json({ success: false, message: "Please enter all fields" });
     }
 
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ success: false, message: "User already exists" });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -39,16 +40,21 @@ export const signup = async (req, res) => {
     });
 
     res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
+      success: true,
+      message: "User registered successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
       token: generateToken(user._id, user.role),
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // @desc Login User
 // @route POST /api/auth/login
