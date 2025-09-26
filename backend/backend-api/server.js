@@ -40,6 +40,7 @@ import connectDB from "./config/db.js";
 import reportRoutes from "./routes/report.route.js";
 import userRoutes from "./routes/user.routes.js";
 import { getMapReports } from "./controller/map.controller.js";
+import analyticsRoutes from "./routes/analytics.route.js"
 
 export function createExpressApp() {
   const app = express();
@@ -65,6 +66,7 @@ export function createExpressApp() {
   app.use("/api/reports", reportRoutes);
   app.use("/api/admin", adminRoutes);
   app.use("/api/map", getMapReports);
+  app.use("/api/analytics", analyticsRoutes); 
 
   return app;
 }
