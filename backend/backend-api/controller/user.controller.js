@@ -66,3 +66,34 @@ export const updateProfile = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find().select("-password");
+
+        const usersWithReports = await Promise.all(
+            users.map(async (user) => {
+                const totalReports = await Report.countDocuments({ reporterId: user._id });
+                const recentReport = await Report.findOne({ reporterId: user._id })
+                    .sort({ createdAt: -1 });
+
+                // You might need a way to determine user status (e.g., from WebSocket, or a 'last_active' field)
+                // For now, we'll assume they are active if they have a recent report.
+                const status = recentReport ? "Active" : "Inactive";
+
+                return {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    reportsCount: totalReports,
+                    status,
+                };
+            })
+        );
+
+        res.json({ success: true, data: usersWithReports });
+    } catch (error) {
+        console.error("❌ Error fetching all users:", error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
